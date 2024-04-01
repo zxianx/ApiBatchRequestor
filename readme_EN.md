@@ -312,3 +312,4 @@ External executable script? lua? js function? (Golang can execute JavaScript fun
 
 The core logic of abr is a production-consumption model (code located at ./core/abr), with only a few hundred lines of
 code and no complex structures. You are welcome to directly add the features you need and submit a pull request.
+For performance optimization or more detailed HTTP request tracing, you can refer to the library https://github.com/rakyll/hey (todo).
