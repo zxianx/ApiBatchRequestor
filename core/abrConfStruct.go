@@ -1,6 +1,9 @@
 package core
 
-import "apiBatchRequester/hooks/paramBuilder"
+import (
+    "apiBatchRequester/hooks/paramAppender"
+    "apiBatchRequester/hooks/paramBuilder"
+)
 
 type ApiPosterConf struct {
     Name string `json:"name" yaml:"name"`
@@ -39,12 +42,17 @@ type ApiPosterConf struct {
     PostParamTemplate   string `json:"postParamTemplate" yaml:"postParamTemplate"`     // eg   {"a":%s,"b":"%s"}   (文件一行中列依次替换%s)
     PostParamTemplateV2 string `json:"postParamTemplateV2" yaml:"postParamTemplateV2"` // eg   {"a":$1,"a2":xx_$1,"b":"$2"}  (文件一行中n列替换$n， $0为整行)
 
-    //函数 postParamBuilderFunc   接受1个字符串参数,文件行内容，todo
+    //高级参数构造
+    //get、post 通用自定义函数构造，需要通过修改代码并重新编译，运行时通过参数builtInParamBuilderName指定函数,详见readme
     BuiltInParamBuilderName string                    `json:"builtInParamBuilderName" yaml:"builtInParamBuilderName"`
     BuiltInParamBuilder     paramBuilder.ParamBuilder `json:"-" yaml:"-"`
+    //get、post 通用自定义函数补充构造，需要通过修改代码并重新编译，运行时通过参数builtInParamAppenderName指定函数，详见readme
+    BuiltInParamAppenderName string                      `json:"builtInParamAppenderName" yaml:"builtInParamAppenderName"`
+    BuiltInParamAppender     paramAppender.ParamAppender `json:"-" yaml:"-"`
 
-    ParamBuilderJs      string `json:"paramBuilderJs" yaml:"paramBuilderJs"`
-    ParamBuilderExecCmd string `json:"paramBuilderExecCmd" yaml:"paramBuilderExecCmd"`
+    // todo
+    // ParamBuilderJs      string `json:"paramBuilderJs" yaml:"paramBuilderJs"`
+    // ParamBuilderExecCmd string `json:"paramBuilderExecCmd" yaml:"paramBuilderExecCmd"`
     // ParamBuilderExtInfoAppenderName string
     // PreParamBuilderTransferName     string
 

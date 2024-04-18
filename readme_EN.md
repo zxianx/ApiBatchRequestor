@@ -189,8 +189,8 @@ GetParamTemplateV2 string `json:"getParamTemplateV2" yaml:"getParamTemplateV2"`
 PostParamTemplateV2 string `json:"postParamTemplateV2" yaml:"postParamTemplateV2"`
 // eg {"a":$1,"a2":xxx_$1,"b":"$2","c":$.JSON3}  (replace the nth column in the file line with $n, $0 is the entire line, $.JSON3 indicates that $3 is replaced after JSON encoding)
 //(tips: Usually use $n for numbers, "$n" for simple strings, $.JSONn for strings that need to be escaped (parentheses will be automatically added)
-//3.4 Post complex parameter construction
-// See below, providing embedded functions, JavaScript functions, executable files, etc., for constructing request parameters.
+// 3.4 Advanced Parameter Construction
+// See the following text for embedded custom function construction, general parameter supplementation construction, JavaScript functions, executable file construction, and other constructions for request parameters.
 
 //*4 Request rate limiting, concurrency limiting
 QpsLimit   int `json:"qpsLimit" yaml:"qpsLimit"`                // Maximum rate
@@ -292,13 +292,37 @@ return
 
 ```
 
-+ Parameter Construction Supplementary Hooks (todo)
++ Parameter Construction Supplementary Hooks 
 
-Scenarios to be solved: The same additional parameters may be included in requests of different interfaces of the same
-business, and it is usually difficult to construct them using string templates.
+Suitable scenario: In the same business, different interfaces may include the same additional parameters (such as authentication parameters, timestamps, etc.), and it is usually difficult to construct them using string templates.
+A parameter construction supplementary hook can be used to complete the construction of these common or complex additional parameters, and then merge them into the parameters constructed through string templates.
 
-You can have a parameter construction supplementary hook to complete these common or complex additional parameter
-constructions, and then merge them into the parameters constructed through string templates.
+Hook insertion position: {project directory}/hooks/paramAppender/
+
+```go
+// ParamAppender is a parameter construction supplementary hook that supports parameter supplementation for GET and POST requests.
+// line represents a line in the source file (it may not be a single line, if you specify a record delimiter other than \n).
+// append represents the additional constructed parameters to be returned. If it is a GET request, it is concatenated to the original parameters; if it is a POST request, it is merged into the outermost layer of the request parameters.
+// Fields in append do not support arrays or nested structures.
+type ParamAppender func(line string) (param map[string]interface{}, err error)
+
+// BuiltInParamAppenderNameMap stores the built-in param appenders with their names as keys.
+var BuiltInParamAppenderNameMap = map[string]ParamAppender{"": nil}
+
+func init() {
+    // insert your hooks here
+
+    // Append a timestamp parameter named "time" to the parameters
+    BuiltInParamAppenderNameMap["time"] = func(line string) (append map[string]interface{}, err error) {
+        append = map[string]interface{}{
+            "time": time.Now().Unix(),
+        }
+        return
+    }
+
+}
+
+```
 
 + Result Parsing Hook (todo)
 

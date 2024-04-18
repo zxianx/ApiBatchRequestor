@@ -1,9 +1,11 @@
 package core
 
 import (
+    "apiBatchRequester/hooks/paramAppender"
     "apiBatchRequester/hooks/paramBuilder"
     "bufio"
     "bytes"
+    "encoding/json"
     "errors"
     "fmt"
     "github.com/bytedance/sonic"
@@ -67,6 +69,13 @@ func (c *ApiPosterConf) NewPoster() (poster *apiPoster, err error) {
         poster.BuiltInParamBuilder = paramBuilder.BuiltInParamBuilderNameMap[c.BuiltInParamBuilderName]
         if poster.BuiltInParamBuilder == nil {
             err = fmt.Errorf("unknown BuiltInParamBuilderName:%s", c.BuiltInParamBuilderName)
+        }
+    }
+
+    if c.BuiltInParamAppenderName != "" {
+        poster.BuiltInParamAppender = paramAppender.BuiltInParamAppenderNameMap[c.BuiltInParamAppenderName]
+        if poster.BuiltInParamAppender == nil {
+            err = fmt.Errorf("unknown BuiltInParamAppenderName:%s", c.BuiltInParamAppenderName)
         }
     }
 
@@ -339,6 +348,20 @@ func (c *apiPoster) itemPost(item string) (err error, resData string) {
     } else {
         datajs, _ = sonic.Marshal(param)
     }
+
+    if c.BuiltInParamAppender != nil {
+        paramAppend, err := c.BuiltInParamAppender(item)
+        if err != nil {
+            return fmt.Errorf("BuiltInParamAppender Line[%s]getErr[%s]", item, err.Error()), ""
+        }
+        var dataMap map[string]interface{}
+        json.Unmarshal(datajs, &dataMap)
+        for s, i := range paramAppend {
+            dataMap[s] = i
+        }
+        datajs, _ = json.Marshal(dataMap)
+    }
+
     if c.DryRun {
         fmt.Println(item, "\n", string(datajs))
         return
@@ -445,6 +468,18 @@ func (c *apiPoster) itemGet(item string) (err error, resData string) {
     } else {
         return errors.New("not find paramBuilder for GET req"), ""
     }
+
+    if c.BuiltInParamAppender != nil {
+        paramAppend, err := c.BuiltInParamAppender(item)
+        if err != nil {
+            return fmt.Errorf("BuiltInParamAppender Line[%s]getErr[%s]", item, err.Error()), ""
+        }
+        url, err = appendParamsToURL(paramAppend, url)
+        if err != nil {
+            return fmt.Errorf("BuiltInParamAppender err Line[%s]appendParamsToURL getErr[%s]", item, err.Error()), ""
+        }
+    }
+
     if c.DryRun {
         fmt.Println(item, "\n", url)
         return

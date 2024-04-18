@@ -1,0 +1,16 @@
+# 基本参数
+method: GET
+host: https://localhost:8081
+path: /getDemo
+
+getParamTemplateV2: '?id=$0'
+# 源文件
+srcFilePath: ./zDemoConfs/testData2.txt     #数据源文件
+# 并发控制
+workerCoroutineNum: 10       #并发数，最多有多少个并发同时请求
+qpsLimit: 100                #限速，每秒最多多少个请求
+
+builtInParamAppenderName: time
+dryRun: true
+# resErrNoName: errNo
+

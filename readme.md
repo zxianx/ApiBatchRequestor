@@ -168,8 +168,8 @@ GetParamTemplateV2 string `json:"getParamTemplateV2" yaml:"getParamTemplateV2"`
 PostParamTemplateV2 string `json:"postParamTemplateV2" yaml:"postParamTemplateV2"` 
 // eg {"a":$1,"a2":xxx_$1,"b":"$2","c":$.JSON3}  (文件一行中n列替换$n， $0为整行, $.JSON3 表示将 $3 json编码后替换)
 //(tips 通常数字用$n ，简单字符串用"$n" ， 需要转义的字符串用$.JSONn(会自动带上括号)
-//3.4 post复杂参数构造
-//见后文，提供内嵌函数，js函数，可执行文件等构造请求参数。
+//3.4 高级参数构造
+//见后文，提供内嵌自定义函数构造，通用参数补充构造，js函数，可执行文件等构造请求参数。
 
 
 //*4 请求限速、限并发
@@ -273,11 +273,39 @@ abr还提供了以下钩子使用方式，用户可以添加自定义的钩子�
 
   
 
-+ 参数构造补充钩子 （todo）
++ 参数构造补充钩子 
 
-  期望能解决的场景： 同一个业务不同接口在请求时可能包含相同的附加参数（比如鉴权参数），且通常难以用字符串模板方式构造。
-
+  适合的场景： 同一个业务不同接口在请求时可能包含相同的附加参数（比如鉴权参数，时间戳...），且通常难以用字符串模板方式构造。
   可以有一个参数构造补充钩子来完成这些通用或复杂的附加参数构造，然后merge进通过字符串模板构造的参数里。
+
+
+钩子插入位置： {项目目录}/hooks/paramAppender/
+
+  ```go
+  
+  // ParamAppender  参数构造补充钩子， 支持get和post请求的参数补充
+  //  line为源文件中的1行（不一定是一行，如果你指定了记录分割符且不是\n的话）
+  //  append 为返回的补充构造参数，如果是get请求则拼接到原始参数后面，post请求则merge到请求参数的最外层
+  //  append 内部字段不支数组及嵌套结构
+  ///*
+  type ParamAppender func(line string) (param map[string]interface{}, err error)
+  
+  var BuiltInParamAppenderNameMap = map[string]ParamAppender{"": nil}
+  
+  func init() {
+      // insert your hooks here
+  
+      //为参数补充一个名为time的时间戳
+      BuiltInParamAppenderNameMap["time"] = func(line string) (append map[string]interface{}, err error) {
+          append = map[string]interface{}{
+              "time": time.Now().Unix(),
+          }
+          return
+      }
+  
+  }
+  
+  ```
 
 + 结果解析钩子  （todo）
 

@@ -17,7 +17,7 @@ import (
 
 var (
     usage = `ApiBatchRequest_script 1.0 , usage example:
-./apiBatchRequester  -f ./xx/examole1.yaml   // 根据配置文件(.json .yaml)
+./apiBatchRequester  -f ./xx/example1.yaml   // 根据配置文件(.json .yaml)
 （detail： https://github.com/zxianx/ApiBatchRequestor/readme.md）
 `
     confFile string
