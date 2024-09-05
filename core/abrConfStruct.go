@@ -37,6 +37,7 @@ type ApiPosterConf struct {
     //get 字符串模板，适合简单参数构造
     GetParamTemplate   string `json:"getParamTemplate" yaml:"getParamTemplate"`     //参数格式eg   ?aa=%s&bb=%s (文件一行中列依次替换%s)
     GetParamTemplateV2 string `json:"getParamTemplateV2" yaml:"getParamTemplateV2"` //参数格式eg   ?aa=$1&bb=$2 (文件一行中n列替换$n， $0为整行)
+    GetUsePathTemplate bool   `json:"getUsePathTemplate" yaml:"getUsePathTemplate"` // 直接不区分path  param，拿Path当模板处理
     // post
     //字符串模板，适合简单参数构造，
     PostParamTemplate   string `json:"postParamTemplate" yaml:"postParamTemplate"`     // eg   {"a":%s,"b":"%s"}   (文件一行中列依次替换%s)

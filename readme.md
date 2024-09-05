@@ -164,6 +164,8 @@ ParamDirect bool `json:"paramDirect" yaml:"paramDirect"`
 //*3.2 get请求 字符串模板参数构造
 //参数格式eg   ?aa=$1&bb=$2 (文件一行中第n列替换$n， $0为替换整行)   
 GetParamTemplateV2 string `json:"getParamTemplateV2" yaml:"getParamTemplateV2"`
+GetUsePathTemplate bool `json:"getUsePathTemplate" yaml:"getUsePathTemplate"`
+// 如果没有GetParamTemplateV2, 且 GetUsePathTemplate==true ， 会把 path当成带参数的Template处理
 //*3.3 post字符串模板构造
 PostParamTemplateV2 string `json:"postParamTemplateV2" yaml:"postParamTemplateV2"` 
 // eg {"a":$1,"a2":xxx_$1,"b":"$2","c":$.JSON3}  (文件一行中n列替换$n， $0为整行, $.JSON3 表示将 $3 json编码后替换)

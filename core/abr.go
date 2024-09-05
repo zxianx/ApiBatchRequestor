@@ -117,8 +117,8 @@ func (c *ApiPosterConf) NewPoster() (poster *apiPoster, err error) {
                           }
                       }*/
 
-            if c.GetParamTemplate+c.GetParamTemplateV2 == "" && !c.ParamDirect {
-                err = errors.New("GET method need GetParamTemplate, GetParamTemplateV2,or set ParamDirect")
+            if c.GetParamTemplate+c.GetParamTemplateV2 == "" && !c.ParamDirect && !c.GetUsePathTemplate {
+                err = errors.New("GET method need GetParamTemplate, GetParamTemplateV2,or set ParamDirect / GetUsePathTemplate")
                 return
             }
             if c.GetParamTemplate != "" && c.GetParamTemplateV2 != "" {
@@ -455,6 +455,11 @@ func (c *apiPoster) itemGet(item string) (err error, resData string) {
         if err != nil {
             return err, ""
         }
+    } else if c.GetUsePathTemplate {
+        url, err = TemplateReplace(url, item, c.SrcFileColumSeparator)
+        if err != nil {
+            return err, ""
+        }
     } else if c.BuiltInParamBuilder != nil {
         query, err2 := c.BuiltInParamBuilder(item)
         if err2 != nil {
@@ -669,8 +674,12 @@ func (c *apiPoster) Run() (err error) {
 
 func TemplateReplace(template, line, sep string) (string, error) {
     // 分割line字符串
-    parts := strings.Split(line, sep)
-
+    var parts []string
+    if sep == "" {
+        parts = append(parts, line)
+    } else {
+        parts = strings.Split(line, sep)
+    }
     // 构造结果字符串
     var result strings.Builder
 

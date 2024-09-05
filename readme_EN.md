@@ -185,6 +185,8 @@ ParamDirect bool `json:"paramDirect" yaml:"paramDirect"`
 //*3.2 GET request string template parameter construction
 // Parameter format eg ?aa=$1&bb=$2 (replace $n with the nth column in the file line, $0 is to replace the entire line)   
 GetParamTemplateV2 string `json:"getParamTemplateV2" yaml:"getParamTemplateV2"`
+GetUsePathTemplate bool `json:"getUsePathTemplate" yaml:"getUsePathTemplate"`
+// If GetParamTemplateV2 is not present and GetUsePathTemplate == true, the path will be treated as a parameterized template.
 //*3.3 Post string template construction
 PostParamTemplateV2 string `json:"postParamTemplateV2" yaml:"postParamTemplateV2"`
 // eg {"a":$1,"a2":xxx_$1,"b":"$2","c":$.JSON3}  (replace the nth column in the file line with $n, $0 is the entire line, $.JSON3 indicates that $3 is replaced after JSON encoding)
