@@ -127,6 +127,8 @@ func (c *ApiPosterConf) NewPoster() (poster *apiPoster, err error) {
             }
             poster.url += c.GetParamTemplate + c.GetParamTemplateV2
         }
+    } else if poster.GetReqUseSrcFileAsFullUrl && poster.isGetMethod {
+        //
     } else {
         err = errors.New("illegal host path")
         return
@@ -210,7 +212,14 @@ func (c *apiPoster) itemProducerRun() (err error) {
     }
     defer file1.Close()
     rd1 := bufio.NewReader(file1)
+    startTime := time.Now().UnixNano()
+    realReqCount := 0
+    readedInOneSecond := 0
+    perSecondBegin := startTime
 
+loopReadFile: // 压测，文件循环读
+    file1.Seek(0, 0)
+    rd1.Reset(file1)
     for i := 0; i < c.SrcFileSkip; i++ {
         if _, err = rd1.ReadString(c.srcFileLineSep); err != nil {
             log.Println(err)
@@ -218,24 +227,21 @@ func (c *apiPoster) itemProducerRun() (err error) {
         }
     }
     fNoEOF := true
-    readedInOneSecond := 0
-    perSecondBegin := time.Now().UnixNano()
     multiLineJoin := ""
     for j := 0; j < c.SrcFileLimit && fNoEOF; j++ {
-        line, err := rd1.ReadString(c.srcFileLineSep)
-        if err != nil {
-            if err == io.EOF {
+        line, errR := rd1.ReadString(c.srcFileLineSep)
+        if errR != nil {
+            if errR == io.EOF {
                 fNoEOF = false
             } else {
-                log.Println(err)
-                return err
+                log.Println(errR)
+                return errR
             }
         }
         line = strings.Trim(line, c.SrcFileLineTrim)
         if line == "" {
             continue
         }
-        readedInOneSecond++
         if c.MultiLine <= 1 {
             c.ch <- line
         } else {
@@ -246,16 +252,25 @@ func (c *apiPoster) itemProducerRun() (err error) {
                 multiLineJoin += c.MultiLineJoinStr + line
             }
         }
+        readedInOneSecond++
+        realReqCount++
         if c.QpsLimit > 0 && readedInOneSecond >= c.QpsLimit {
             now := time.Now()
+            if c.TimeLimit > 0 && now.UnixNano()-startTime >= int64(c.TimeLimit)*1e9 {
+                log.Printf("timeLimit[%d]s reach, realReqCount[%d], at line [%d], %s \n", c.TimeLimit, realReqCount, j+c.SrcFileSkip+1, line)
+                return
+            }
             time.Sleep(time.Duration(c.checkInterval - (now.UnixNano() - perSecondBegin)))
-            fmt.Printf("no. %d line[%s], %v \n", j+c.SrcFileSkip+1, line, now)
+            fmt.Printf("no. %d line[%s], sumReqCount[%d], %v \n", j+c.SrcFileSkip+1, line, realReqCount, now)
             perSecondBegin = perSecondBegin + c.checkInterval
             readedInOneSecond = 0
         }
     }
     if multiLineJoin != "" {
         c.ch <- multiLineJoin
+    }
+    if c.SrcFileLoopRun {
+        goto loopReadFile
     }
     return
 }
@@ -399,9 +414,11 @@ func (c *apiPoster) itemPost(item string) (err error, resData string) {
     }
     defer res.Body.Close()
     if res.StatusCode != 200 {
-        fmt.Println(item, "\n", string(datajs))
-        atomic.AddUint64(&c.statusCodeErr, 1)
-        return errors.New(fmt.Sprintf("StatusCode  %d", res.StatusCode)), ""
+        if !(c.SuccessOn20x && res.StatusCode/10 == 20) {
+            fmt.Println(item, "\n", string(datajs))
+            atomic.AddUint64(&c.statusCodeErr, 1)
+            return errors.New(fmt.Sprintf("StatusCode  %d", res.StatusCode)), ""
+        }
     }
     if c.DetailLog || !c.DiscardResBody {
         body, _ := ioutil.ReadAll(res.Body)
@@ -434,7 +451,9 @@ func (c *apiPoster) itemPost(item string) (err error, resData string) {
 
 func (c *apiPoster) itemGet(item string) (err error, resData string) {
     url := c.url
-    if c.ParamDirect {
+    if c.GetReqUseSrcFileAsFullUrl {
+        url = item
+    } else if c.ParamDirect {
         url += item
     } else if c.GetParamTemplate != "" {
         if c.SrcFileColumNum == 1 {
@@ -520,8 +539,10 @@ func (c *apiPoster) itemGet(item string) (err error, resData string) {
     atomic.AddUint64(&c.Time, uint64(time.Now().UnixNano()-t)/1e6)
     defer res.Body.Close()
     if res.StatusCode != 200 {
-        atomic.AddUint64(&c.statusCodeErr, 1)
-        return errors.New(fmt.Sprintf("StatusCode  %d", res.StatusCode)), ""
+        if !(c.SuccessOn20x && res.StatusCode/10 == 20) {
+            atomic.AddUint64(&c.statusCodeErr, 1)
+            return errors.New(fmt.Sprintf("StatusCode  %d", res.StatusCode)), ""
+        }
     }
 
     if c.DetailLog || !c.DiscardResBody {

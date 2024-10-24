@@ -28,16 +28,19 @@ type ApiPosterConf struct {
     // 特殊源文件格式
     SrcFileSepUsRsUs bool   `json:"srcFileSepUsRsUs" yaml:"srcFileSepUsRsUs"` // 用"\x1E" 当行分隔符， 用 用"\x1F" 当列分隔符
     SrcFileLineTrim  string `json:"srcFileLineTrim" yaml:"srcFileLineTrim"`   // 默认 "\n\r\t"
+    SrcFileLoopRun   bool   `json:"srcFileLoopRun" yaml:"srcFileLoopRun"`     // 默认 false，循环执行文件, 适用压测情景，用一个参数池反复请求.
 
     // 请求参数构造,选一个构造方式 （暂不支持同时构造url和body）
 
-    //不构造，文件每行就是请求参数，文件行格式要求，get请求格式 【?aa=1&bb=xx】，post json格式【 {"a":1,"b":"bv"} 】
+    // 不构造，文件每行就是请求参数，文件行格式要求，get请求格式 【?aa=1&bb=xx】，post json格式【 {"a":1,"b":"bv"} 】
     ParamDirect bool `json:"paramDirect" yaml:"paramDirect"`
 
     //get 字符串模板，适合简单参数构造
-    GetParamTemplate   string `json:"getParamTemplate" yaml:"getParamTemplate"`     //参数格式eg   ?aa=%s&bb=%s (文件一行中列依次替换%s)
-    GetParamTemplateV2 string `json:"getParamTemplateV2" yaml:"getParamTemplateV2"` //参数格式eg   ?aa=$1&bb=$2 (文件一行中n列替换$n， $0为整行)
-    GetUsePathTemplate bool   `json:"getUsePathTemplate" yaml:"getUsePathTemplate"` // 直接不区分path  param，拿Path当模板处理
+    GetParamTemplate          string `json:"getParamTemplate" yaml:"getParamTemplate"`                   //参数格式eg   ?aa=%s&bb=%s (文件一行中列依次替换%s)
+    GetParamTemplateV2        string `json:"getParamTemplateV2" yaml:"getParamTemplateV2"`               //参数格式eg   ?aa=$1&bb=$2 (文件一行中n列替换$n， $0为整行)
+    GetUsePathTemplate        bool   `json:"getUsePathTemplate" yaml:"getUsePathTemplate"`               // 直接不区分path  param，拿Path当模板处理
+    GetReqUseSrcFileAsFullUrl bool   `json:"getReqUseSrcFileAsFullUrl" yaml:"getReqUseSrcFileAsFullUrl"` //对于get请求，可以直接拿文件每行当做完整请求url,适用请求多个目标url非同域名或者不方便构造情景
+
     // post
     //字符串模板，适合简单参数构造，
     PostParamTemplate   string `json:"postParamTemplate" yaml:"postParamTemplate"`     // eg   {"a":%s,"b":"%s"}   (文件一行中列依次替换%s)
@@ -64,7 +67,9 @@ type ApiPosterConf struct {
     QPerTimeRange            int `json:"qPerTimeRange" yaml:"qPerTimeRange"`                       // 秒，默认1 ，即n q/1s，适用 < 1qps的限速
     WorkerCoroutineNum       int `json:"workerCoroutineNum" yaml:"workerCoroutineNum"`             //默认1  并发度,最多几个请求同时请求服务 严格顺序要求请主动置1，压测可以调大WorkerCoroutineNum
     ExpectReqCostMillisecond int `json:"expectReqCostMillisecond" yaml:"expectReqCostMillisecond"` // 单次请求期望耗时（毫秒），当不设置并发度，系统自动根据此字段安排并发度
+    TimeLimit                int `json:"timeLimit" yaml:"timeLimit"`                               // 秒，0为不限制，限制后无论执行多少行，到时间就停，适用定时长发压情景
 
+    SuccessOn20x   bool `json:"successOn20x" yaml:"successOn20x"`     // 默认false, 只视http status code 200为成功，设为true时，20x都看做成功
     DiscardResBody bool `json:"discardResBody" yaml:"discardResBody"` //丢弃返回body，不处理
 
     ResErrNoName string `json:"resErrNoName" yaml:"resErrNoName"` // 默认不解析body中的errNo， eg  errno、 errNo

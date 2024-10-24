@@ -149,7 +149,9 @@ SrcFileColumSeparator string `json:"srcFileColumSeparator" yaml:"srcFileColumSep
 //2.4 特殊源文件格式，一般不需要手动指定
 SrcFileSepUsRsUs  bool   `json:"srcFileSepUsRsUs" yaml:"srcFileSepUsRsUs"` // 用"\x1E" 当行分隔符， 用 用"\x1F" 当列分隔符, （RS、US当列表分割符的文件，常用来避免分隔符和表格cell内容冲突）
 SrcFileLineTrim   string `json:"srcFileLineTrim" yaml:"srcFileLineTrim"` //默认 "\n\r\t"
-//2.5 行合并，多行转1行多列 （不影响限速，依然按多行算限速）
+//2.5 循环执行文件
+SrcFileLoopRun   bool   `json:"srcFileLoopRun" yaml:"srcFileLoopRun"`     // 默认 false，循环执行文件, 适用压测情景，用一个参数池反复请求，
+//2.6 行合并，多行转1行多列 （不影响限速，依然按多行算限速）
 MultiLine          int `json:"multiLine" yaml:"multiLine"`  // 默认1，即不合并
 MultiLineJoinStr   string  `json:"multiLineJoinStr" yaml:"multiLineJoinStr"`  // 默认 ","  
 //tips：比如你有一个单列的id文件，你可以设置multiLine=3 来将3行合并成1行3列，合并后单行如”id1,id2,di3“ ,适用于类似mget等场景参数构造
@@ -166,24 +168,30 @@ ParamDirect bool `json:"paramDirect" yaml:"paramDirect"`
 GetParamTemplateV2 string `json:"getParamTemplateV2" yaml:"getParamTemplateV2"`
 GetUsePathTemplate bool `json:"getUsePathTemplate" yaml:"getUsePathTemplate"`
 // 如果没有GetParamTemplateV2, 且 GetUsePathTemplate==true ， 会把 path当成带参数的Template处理
-//*3.3 post字符串模板构造
+// 3.3  get请求以源文件为完整url发请求 
+GetReqUseSrcFileAsFullUrl bool   `json:"getReqUseSrcFileAsFullUrl" yaml:"getReqUseSrcFileAsFullUrl"` //对于get请求，可以直接拿文件每行当做完整请求url,适用请求多个目标url非同域名或者不方便构造情景
+//*3.4 post字符串模板构造
 PostParamTemplateV2 string `json:"postParamTemplateV2" yaml:"postParamTemplateV2"` 
 // eg {"a":$1,"a2":xxx_$1,"b":"$2","c":$.JSON3}  (文件一行中n列替换$n， $0为整行, $.JSON3 表示将 $3 json编码后替换)
 //(tips 通常数字用$n ，简单字符串用"$n" ， 需要转义的字符串用$.JSONn(会自动带上括号)
-//3.4 高级参数构造
+//3.5 高级参数构造
 //见后文，提供内嵌自定义函数构造，通用参数补充构造，js函数，可执行文件等构造请求参数。
 
 
-//*4 请求限速、限并发
+//*4 请求限速、限并发，限时
 QpsLimit   int `json:"qpsLimit" yaml:"qpsLimit"`   							 // 最大限速
 QPerTimeRange   int `json:"qPerTimeRange" yaml:"qPerTimeRange"`  // 限速间隔，单位秒，默认1s ，即n q/1s，适用 < 1qps的限速
 WorkerCoroutineNum  int `json:"workerCoroutineNum" yaml:"workerCoroutineNum"` 
 //并发度，默认1串行请求,最多几个请求同时请求服务 严格顺序要求请主动置1，压测可以调大WorkerCoroutineNum，
 ExpectReqCostMillisecond int `json:"expectReqCostMillisecond" yaml:"expectReqCostMillisecond"` 
 //单次请求期望耗时（毫秒），当不设置并发度，系统自动根据此字段安排并发度
+TimeLimit                int `json:"timeLimit" yaml:"timeLimit"`                               
+// 程序执行限时 秒，0为不限制，限制后无论执行多少行，到时间就停，适用定时长发压情景
+
  
 //5 错误检查、结果解析 ，让abr知道如何发现异常请求以及保存你想要的请求结果 
-// 默认视作http连接出错和Http返回非200状态码为错误，
+// 默认视作http连接、请求出错和Http返回非200状态码为错误，
+SuccessOn20x     bool `json:"successOn20x" yaml:"successOn20x"` // 默认false, 只视http status code 200为成功，设为true时，20x都看做成功
 // 5.1 丢弃结果不检查，适合压测提升发压端性能（依旧会检查http错误）
 DiscardResBody bool `json:"discardResBody" yaml:"discardResBody"` 
 //* 5.2 接口返回结果错误码探针（错误码字段名）

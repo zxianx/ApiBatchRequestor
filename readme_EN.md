@@ -171,7 +171,9 @@ SrcFileColumSeparator string `json:"srcFileColumSeparator" yaml:"srcFileColumSep
 //2.4 Special source file format, usually not manually specified
 SrcFileSepUsRsUs  bool   `json:"srcFileSepUsRsUs" yaml:"srcFileSepUsRsUs"` // Use "\x1E" as row separator and "\x1F" as column separator, (RS, US are used as column separators in files, commonly used to avoid conflicts between separators and table cell content)
 SrcFileLineTrim   string `json:"srcFileLineTrim" yaml:"srcFileLineTrim"`   // Default "\n\r\t"
-//2.5 Row merging, multiple lines to 1 line and multiple columns (does not affect rate limiting, still counts as multiple lines for rate limiting)
+//2.5 loop run source file, useful for parameter stress testing
+SrcFileLoopRun   bool   `json:"srcFileLoopRun" yaml:"srcFileLoopRun"`     // default false，
+//2.6 Row merging, multiple lines to 1 line and multiple columns (does not affect rate limiting, still counts as multiple lines for rate limiting)
 MultiLine          int `json:"multiLine" yaml:"multiLine"`                   // Default 1, i.e., no merging
 MultiLineJoinStr   string  `json:"multiLineJoinStr" yaml:"multiLineJoinStr"` // Default ","
 // (tips: For example, if you have a single-column ID file, you can set multiLine=3 to merge 3 lines into 1 line with 3 columns, and the merged single line is "id1,id2,di3", suitable for parameter construction in scenarios like mget)
@@ -187,7 +189,9 @@ ParamDirect bool `json:"paramDirect" yaml:"paramDirect"`
 GetParamTemplateV2 string `json:"getParamTemplateV2" yaml:"getParamTemplateV2"`
 GetUsePathTemplate bool `json:"getUsePathTemplate" yaml:"getUsePathTemplate"`
 // If GetParamTemplateV2 is not present and GetUsePathTemplate == true, the path will be treated as a parameterized template.
-//*3.3 Post string template construction
+// 3.3  GET request use src file each line as full req  url
+GetReqUseSrcFileAsFullUrl bool   `json:"getReqUseSrcFileAsFullUrl" yaml:"getReqUseSrcFileAsFullUrl"`
+//*3.4 Post string template construction
 PostParamTemplateV2 string `json:"postParamTemplateV2" yaml:"postParamTemplateV2"`
 // eg {"a":$1,"a2":xxx_$1,"b":"$2","c":$.JSON3}  (replace the nth column in the file line with $n, $0 is the entire line, $.JSON3 indicates that $3 is replaced after JSON encoding)
 //(tips: Usually use $n for numbers, "$n" for simple strings, $.JSONn for strings that need to be escaped (parentheses will be automatically added)
@@ -201,9 +205,12 @@ WorkerCoroutineNum  int `json:"workerCoroutineNum" yaml:"workerCoroutineNum"`
 //Concurrency, default is 1 for serial requests, and the maximum number of requests to be sent to the service at the same time
 ExpectReqCostMillisecond int `json:"expectReqCostMillisecond" yaml:"expectReqCostMillisecond"`
 //Expected time consumption for a single request (milliseconds), when concurrency is not set, the system automatically arranges concurrency based on this field
+TimeLimit                int `json:"timeLimit" yaml:"timeLimit"`
+// task Time limit, in seconds, default is 0 (no time limit)
 
 //5 Error checking, result parsing, letting abr know how to detect abnormal requests and save the results you want
 // By default, non-zero error codes in HTTP connection errors and non-200 status codes in HTTP responses are considered errors,
+SuccessOn20x     bool `json:"successOn20x" yaml:"successOn20x"` // default false, just sea http status code 200 as success，if set true ，expand to 20x
 // 5.1 Discard result without checking, suitable for stress testing to improve performance of the sending end (still checks HTTP errors)
 DiscardResBody bool `json:"discardResBody" yaml:"discardResBody"`
 //* 5.2 Interface return result error code probe (error code field name)
