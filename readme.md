@@ -132,7 +132,7 @@ Path   string `json:"path" yaml:"path"` //  需要包含斜杠开头
 //1.2 头信息，非必须
 Cookies map[string]string `json:"cookies" yaml:"cookies"`
 ReqHost string            `json:"reqHost" yaml:"reqHost"`
-Header  map[string]string `json:"header" yaml:"header"`
+Header  string            `json:"header" yaml:"header"` //  eg, "header1:abc\theader2=$3", \t分隔不同头
 
 
 //2 源文件信息，让abr知道如何解析源文件

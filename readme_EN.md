@@ -154,7 +154,7 @@ Path   string `json:"path" yaml:"path"` //  Must start with a slash
 //1.2 Header information, optional
 Cookies map[string]string `json:"cookies" yaml:"cookies"`
 ReqHost string            `json:"reqHost" yaml:"reqHost"`
-Header  map[string]string `json:"header" yaml:"header"`
+Header  string            `json:"header" yaml:"header"` //  eg, "header1:abc\theader2=$3",
 
 
 //2 Source file information, letting abr know how to parse the source file

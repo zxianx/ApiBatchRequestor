@@ -1,9 +1,10 @@
 # 基本参数
 method: POST
-host: https://localhost:8081
+host: http://localhost:8081
 path: /postDemo
+header: "h1:v1\th2:$1"
 
-postParamTemplateV2: '{"id":"$1", "name":$2, "otherParam":"abc"}'
+postParamTemplateV2: '{"id":$1, "name":"$2", "otherParam":"abc"}'
 # 源文件
 srcFilePath: ./zDemoConfs/testData.txt     #数据源文件
 # 并发控制
@@ -11,6 +12,7 @@ workerCoroutineNum: 10       #并发数，最多有多少个并发同时请求
 qpsLimit: 100                #限速，每秒最多多少个请求
 
 builtInParamAppenderName: time
-dryRun: true
+dryRun: false
+# saveRes: true
 # resErrNoName: errNo
 
