@@ -38,6 +38,7 @@ type statisticData struct {
 	parseBodyErr  uint64
 	succ          uint64
 	Time          uint64
+	resBodyBytes  uint64
 }
 
 type apiPoster struct {
@@ -434,6 +435,9 @@ func (c *apiPoster) itemPost(item string) (err error, resData string) {
 	if c.DetailLog || !c.DiscardResBody {
 		body, _ := ioutil.ReadAll(res.Body)
 		bodys := string(body)
+		if c.Statistic {
+			atomic.AddUint64(&c.resBodyBytes, uint64(len(body)))
+		}
 		if c.DetailLog {
 			fmt.Println(item, "\n", string(datajs), "\n", bodys)
 		}
@@ -453,7 +457,10 @@ func (c *apiPoster) itemPost(item string) (err error, resData string) {
 			}
 		}
 	} else {
-		io.Copy(ioutil.Discard, res.Body)
+		n, _ := io.Copy(ioutil.Discard, res.Body)
+		if c.Statistic {
+			atomic.AddUint64(&c.resBodyBytes, uint64(n))
+		}
 	}
 
 	atomic.AddUint64(&c.succ, 1)
@@ -557,6 +564,9 @@ func (c *apiPoster) itemGet(item string) (err error, resData string) {
 	if c.DetailLog || !c.DiscardResBody {
 		body, _ := ioutil.ReadAll(res.Body)
 		bodys := string(body)
+		if c.Statistic {
+			atomic.AddUint64(&c.resBodyBytes, uint64(len(body)))
+		}
 		if c.DetailLog {
 			fmt.Println(item, "\n", url, "\n", bodys)
 		}
@@ -575,7 +585,10 @@ func (c *apiPoster) itemGet(item string) (err error, resData string) {
 			}
 		}
 	} else {
-		io.Copy(ioutil.Discard, res.Body)
+		n, _ := io.Copy(ioutil.Discard, res.Body)
+		if c.Statistic {
+			atomic.AddUint64(&c.resBodyBytes, uint64(n))
+		}
 	}
 
 	atomic.AddUint64(&c.succ, 1)
@@ -584,8 +597,8 @@ func (c *apiPoster) itemGet(item string) (err error, resData string) {
 
 func (c *apiPoster) RunStatistic() {
 	oldStatistic := statisticData{}
-	template := "req:%d reqFail:%d statusCodeErr:%d contentErr:%d succ%d %d%% %dms"
-	var oldFail, nowFail, nowRes, decRes, decFail, decSuccRate, decAvgTime uint64
+	template := "req:%d reqFail:%d statusCodeErr:%d contentErr:%d succ%d %d%%, avgCost:%dms body:%dBytes bw:%.3fMBps"
+	var oldFail, nowFail, nowRes, decRes, decFail, decSuccRate, decAvgTime, decBodyBytes uint64
 	var totalInfo, decInfo string
 
 	for c.reqTotal == 0 {
@@ -607,10 +620,15 @@ func (c *apiPoster) RunStatistic() {
 		if decRes != 0 {
 			decAvgTime = (now.Time - oldStatistic.Time) / decRes
 		}
+		decBodyBytes = now.resBodyBytes - oldStatistic.resBodyBytes
+		decSpeed := float64(decBodyBytes) / (float64(c.checkInterval) / 1e9) / 1024 / 1024
+		nowTime := time.Now()
+		totalTime := nowTime.Sub(c.startTime) / time.Second
+		speed := float64(now.resBodyBytes) / float64(totalTime) / 1024 / 1024
+		totalInfo = fmt.Sprintf(template, now.reqTotal, now.reqFail, now.statusCodeErr, now.parseBodyErr, now.succ, now.succ*100/nowRes, now.Time/nowRes, now.resBodyBytes, speed)
+		decInfo = fmt.Sprintf(template, now.reqTotal-oldStatistic.reqTotal, now.reqFail-oldStatistic.reqFail, now.statusCodeErr-oldStatistic.statusCodeErr, now.parseBodyErr-oldStatistic.parseBodyErr, now.succ-oldStatistic.succ, decSuccRate, decAvgTime, decBodyBytes, decSpeed)
 
-		totalInfo = fmt.Sprintf(template, now.reqTotal, now.reqFail, now.statusCodeErr, now.parseBodyErr, now.succ, now.succ*100/nowRes, now.Time/nowRes)
-		decInfo = fmt.Sprintf(template, now.reqTotal-oldStatistic.reqTotal, now.reqFail-oldStatistic.reqFail, now.statusCodeErr-oldStatistic.statusCodeErr, now.parseBodyErr-oldStatistic.parseBodyErr, now.succ-oldStatistic.succ, decSuccRate, decAvgTime)
-		fmt.Printf("[STATISTIC] now_%d(%s) total(%s)\n", time.Now().Unix(), decInfo, totalInfo)
+		fmt.Printf("[STATISTIC %s +%ds] cur(%s) total(%s)\n", nowTime.Format("2006-01-02 15:04:05"), totalTime, decInfo, totalInfo)
 		oldStatistic = now
 	}
 }
