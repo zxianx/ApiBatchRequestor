@@ -167,7 +167,7 @@ ParamDirect bool `json:"paramDirect" yaml:"paramDirect"`
 //参数格式eg   ?aa=$1&bb=$2 (文件一行中第n列替换$n， $0为替换整行)   
 GetParamTemplateV2 string `json:"getParamTemplateV2" yaml:"getParamTemplateV2"`
 GetUsePathTemplate bool `json:"getUsePathTemplate" yaml:"getUsePathTemplate"`
-// 如果没有GetParamTemplateV2, 且 GetUsePathTemplate==true ， 会把 path当成带参数的Template处理
+// 如果没有GetParamTemplateV2, 且 GetUsePathTemplate==true ， 会把 path当成带参数的Template处理， 也是$占位符
 // 3.3  get请求以源文件为完整url发请求 
 GetReqUseSrcFileAsFullUrl bool   `json:"getReqUseSrcFileAsFullUrl" yaml:"getReqUseSrcFileAsFullUrl"` //对于get请求，可以直接拿文件每行当做完整请求url,适用请求多个目标url非同域名或者不方便构造情景
 //*3.4 post字符串模板构造
@@ -192,7 +192,7 @@ TimeLimit                int `json:"timeLimit" yaml:"timeLimit"`
 //5 错误检查、结果解析 ，让abr知道如何发现异常请求以及保存你想要的请求结果 
 // 默认视作http连接、请求出错和Http返回非200状态码为错误，
 SuccessOn20x     bool `json:"successOn20x" yaml:"successOn20x"` // 默认false, 只视http status code 200为成功，设为true时，20x都看做成功
-// 5.1 丢弃结果不检查，适合压测提升发压端性能（依旧会检查http错误）
+// 5.1 丢弃结果不检查，适合压测提升发压端性能（依旧会检查http错误）, 和参数 ”detailLog==true“ 有冲突
 DiscardResBody bool `json:"discardResBody" yaml:"discardResBody"` 
 //* 5.2 接口返回结果错误码探针（错误码字段名）
 ResErrNoName   string `json:"resErrNoName" yaml:"resErrNoName"`   

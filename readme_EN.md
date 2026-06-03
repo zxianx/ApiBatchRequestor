@@ -188,7 +188,7 @@ ParamDirect bool `json:"paramDirect" yaml:"paramDirect"`
 // Parameter format eg ?aa=$1&bb=$2 (replace $n with the nth column in the file line, $0 is to replace the entire line)   
 GetParamTemplateV2 string `json:"getParamTemplateV2" yaml:"getParamTemplateV2"`
 GetUsePathTemplate bool `json:"getUsePathTemplate" yaml:"getUsePathTemplate"`
-// If GetParamTemplateV2 is not present and GetUsePathTemplate == true, the path will be treated as a parameterized template.
+// If GetParamTemplateV2 is not present and GetUsePathTemplate == true, the path will be treated as a parameterized template.  also use "$n" as placeholder 
 // 3.3  GET request use src file each line as full req  url
 GetReqUseSrcFileAsFullUrl bool   `json:"getReqUseSrcFileAsFullUrl" yaml:"getReqUseSrcFileAsFullUrl"`
 //*3.4 Post string template construction
@@ -211,7 +211,7 @@ TimeLimit                int `json:"timeLimit" yaml:"timeLimit"`
 //5 Error checking, result parsing, letting abr know how to detect abnormal requests and save the results you want
 // By default, non-zero error codes in HTTP connection errors and non-200 status codes in HTTP responses are considered errors,
 SuccessOn20x     bool `json:"successOn20x" yaml:"successOn20x"` // default false, just sea http status code 200 as success，if set true ，expand to 20x
-// 5.1 Discard result without checking, suitable for stress testing to improve performance of the sending end (still checks HTTP errors)
+// 5.1 Discard result without checking, suitable for stress testing to improve performance of the sending end (still checks HTTP errors)，it has conflict with param ”detailLog==true“ 
 DiscardResBody bool `json:"discardResBody" yaml:"discardResBody"`
 //* 5.2 Interface return result error code probe (error code field name)
 ResErrNoName   string `json:"resErrNoName" yaml:"resErrNoName"`
