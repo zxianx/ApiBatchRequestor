@@ -187,6 +187,13 @@ ExpectReqCostMillisecond int `json:"expectReqCostMillisecond" yaml:"expectReqCos
 //单次请求期望耗时（毫秒），当不设置并发度，系统自动根据此字段安排并发度
 TimeLimit                int `json:"timeLimit" yaml:"timeLimit"`                               
 // 程序执行限时 秒，0为不限制，限制后无论执行多少行，到时间就停，适用定时长发压情景
+HttpClientReuseMode  int  `json:"httpClientReuseMode" yaml:"httpClientReuseMode"`
+// HTTP 连接复用模式，默认 0
+//   0: 所有 worker 共用 1 个全局 http.Client/连接池（默认，吞吐最好）
+//   1: 每个 worker 独立 1 个 http.Client/连接池，池之间互不干扰，
+//      适合需要"每并发对应独立 TCP 连接"的压测场景（每个 client 池较小，MaxIdleConnsPerHost=8）
+//   2: 短连接，每次请求后关闭 TCP 连接（Transport.DisableKeepAlives=true），
+//      适合测试服务端在不复用连接时的表现
 
  
 //5 错误检查、结果解析 ，让abr知道如何发现异常请求以及保存你想要的请求结果 

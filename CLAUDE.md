@@ -59,6 +59,16 @@ zDemoConfs/                  # 配置样例 + 测试数据
 
 QPS 控制由 `QpsLimit` + `QPerTimeRange` 在 producer 内 `time.Sleep` 实现;并发度由 `WorkerCoroutineNum` 控制(超过 `MaxCoroutineNum=3000` 会被截断)。
 
+### HTTP client 选取(连接复用模式)
+
+`HttpClientReuseMode` 控制 worker 用哪个 `*http.Client`:
+
+- `0` (默认, `HttpClientReuseModeShared`) — 所有 worker 共用 `DefaultHttpClient`,共享连接池(吞吐最好)
+- `1` (`HttpClientReuseModePerWorker`) — 每个 worker 1 个独立 client/连接池, `NewPoster` 阶段按 `WorkerCoroutineNum` 预建,池较小(`MaxIdleConnsPerHost=8`)
+- `2` (`HttpClientReuseModeShortConn`) — 共享一个 `DisableKeepAlives=true` 的短连接 client
+
+集中实现在 [core/httpClient.go](core/httpClient.go) 的 `getClients(mode, workerNum)`,返回 `(shared, perWorker)` 两路;`apiPoster` 存 `httpClient` 和 `workerHttpClients` 两个字段,`clientForWorker(idx)` 优先用 `httpClient`(非 nil 即所有 worker 共用),否则取 `workerHttpClients[idx]`。`itemGet`/`itemPost` 接收 `client *http.Client` 参数,在 worker goroutine 开头取一次即可。
+
 ### 配置加载
 
 `ApiPosterConf` 是单层平铺结构,所有字段同时支持 `json` 和 `yaml` tag。运行时配置转换/校验集中在 `NewPoster()` ([core/abr.go:59](core/abr.go#L59)) — 这里设置默认值、解析 `Header` 字符串、`BuiltInParamBuilder`/`BuiltInParamAppender` 查表绑定等。

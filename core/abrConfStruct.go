@@ -69,6 +69,12 @@ type ApiPosterConf struct {
 	ExpectReqCostMillisecond int `json:"expectReqCostMillisecond" yaml:"expectReqCostMillisecond"` // 单次请求期望耗时（毫秒），当不设置并发度，系统自动根据此字段安排并发度
 	TimeLimit                int `json:"timeLimit" yaml:"timeLimit"`                               // 秒，0为不限制，限制后无论执行多少行，到时间就停，适用定时长发压情景
 
+	// HTTP 连接复用模式
+	//   0(默认): 所有 worker 共用 1 个全局 client/连接池
+	//   1:       每个 worker 独立 1 个 client/连接池, 池间互不干扰
+	//   2:       短连接, 每次请求后关闭 TCP(DisableKeepAlives)
+	HttpClientReuseMode int `json:"httpClientReuseMode" yaml:"httpClientReuseMode"`
+
 	SuccessOn20x   bool `json:"successOn20x" yaml:"successOn20x"`     // 默认false, 只视http status code 200为成功，设为true时，20x都看做成功
 	DiscardResBody bool `json:"discardResBody" yaml:"discardResBody"` //丢弃返回body，不处理
 

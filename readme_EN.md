@@ -208,6 +208,11 @@ ExpectReqCostMillisecond int `json:"expectReqCostMillisecond" yaml:"expectReqCos
 TimeLimit                int `json:"timeLimit" yaml:"timeLimit"`
 // task Time limit, in seconds, default is 0 (no time limit)
 
+HttpClientReuseMode  int  `json:"httpClientReuseMode" yaml:"httpClientReuseMode"`
+// HTTP 连接复用模式，默认 0
+//   default 0:  share global pool   1: perWorker one pool, 2: disableKeepAlives
+
+
 //5 Error checking, result parsing, letting abr know how to detect abnormal requests and save the results you want
 // By default, non-zero error codes in HTTP connection errors and non-200 status codes in HTTP responses are considered errors,
 SuccessOn20x     bool `json:"successOn20x" yaml:"successOn20x"` // default false, just sea http status code 200 as success，if set true ，expand to 20x

@@ -5,3 +5,4 @@ local
 /tmp
 /.idea
 ./apiBatchRequester
+.claude

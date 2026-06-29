@@ -54,6 +54,11 @@ type apiPoster struct {
 	errItemCh   chan string
 	resCh       chan string
 
+	// HTTP client 选取: httpClient 不为 nil 时所有 worker 共用它(模式 0/2);
+	// 否则按 worker 序号从 workerHttpClients 取(模式 1)
+	httpClient        *http.Client
+	workerHttpClients []*http.Client
+
 	checkInterval int64
 }
 
@@ -167,6 +172,12 @@ func (c *ApiPosterConf) NewPoster() (poster *apiPoster, err error) {
 		poster.WorkerCoroutineNum = MaxCoroutineNum
 	}
 	log.Println("WorkerCoroutineNum", c.WorkerCoroutineNum)
+
+	// 按 HttpClientReuseMode 准备 worker 的 client
+	poster.httpClient, poster.workerHttpClients, err = getClients(poster.HttpClientReuseMode, poster.WorkerCoroutineNum)
+	if err != nil {
+		return
+	}
 
 	if poster.SrcFilePath == "" {
 		err = errors.New("need SrcFilePath")
@@ -328,7 +339,17 @@ func (c *apiPoster) resItemSaverRun() (err error) {
 	return
 }
 
-func (c *apiPoster) itemPost(item string) (err error, resData string) {
+// clientForWorker 按 worker 序号取 http.Client。
+// httpClient 不为 nil 时优先返回它（模式 0 共享 / 模式 2 短连接）；
+// 否则用模式 1 预建的 workerHttpClients[idx]。
+func (c *apiPoster) clientForWorker(idx int) *http.Client {
+	if c.httpClient != nil {
+		return c.httpClient
+	}
+	return c.workerHttpClients[idx]
+}
+
+func (c *apiPoster) itemPost(item string, client *http.Client) (err error, resData string) {
 	var param interface{}
 	if c.ParamDirect {
 		if item == "" {
@@ -413,7 +434,7 @@ func (c *apiPoster) itemPost(item string) (err error, resData string) {
 	atomic.AddUint64(&c.reqTotal, 1)
 	var res *http.Response
 	for retry := c.Retry + 1; retry > 0; retry-- {
-		res, err = DefaultHttpClient.Do(req)
+		res, err = client.Do(req)
 		if err == nil {
 			break
 		}
@@ -467,7 +488,7 @@ func (c *apiPoster) itemPost(item string) (err error, resData string) {
 	return
 }
 
-func (c *apiPoster) itemGet(item string) (err error, resData string) {
+func (c *apiPoster) itemGet(item string, client *http.Client) (err error, resData string) {
 	url := c.url
 	if c.GetReqUseSrcFileAsFullUrl {
 		url = item
@@ -541,7 +562,7 @@ func (c *apiPoster) itemGet(item string) (err error, resData string) {
 	t := time.Now().UnixNano()
 	var res *http.Response
 	for retry := c.Retry + 1; retry > 0; retry-- {
-		res, err = DefaultHttpClient.Do(req)
+		res, err = client.Do(req)
 		if err == nil {
 			break
 		}
@@ -597,8 +618,11 @@ func (c *apiPoster) itemGet(item string) (err error, resData string) {
 
 func (c *apiPoster) RunStatistic() {
 	oldStatistic := statisticData{}
-	template := "req:%d reqFail:%d statusCodeErr:%d contentErr:%d succ%d %d%%, avgCost:%dms body:%dBytes bw:%.3fMBps"
-	var oldFail, nowFail, nowRes, decRes, decFail, decSuccRate, decAvgTime, decBodyBytes uint64
+
+	template := "req:%d reqFail:%d statusCodeErr:%d contentErr:%d succ%d %.2f%%, avgCost:%dms body:%dBytes bw:%.3fMBps"
+	var oldFail, nowFail, nowRes, decRes, decFail, decAvgTime, decBodyBytes uint64
+	var decSuccRate float64
+
 	var totalInfo, decInfo string
 
 	for c.reqTotal == 0 {
@@ -616,7 +640,7 @@ func (c *apiPoster) RunStatistic() {
 		nowRes = nowFail + now.succ
 		decRes = nowRes - (oldFail + oldStatistic.succ)
 		decFail = nowFail - oldFail
-		decSuccRate = 100 - decFail*100/(nowRes)
+		decSuccRate = 100.0 - 100.0*float64(decFail)/float64(nowRes)
 		if decRes != 0 {
 			decAvgTime = (now.Time - oldStatistic.Time) / decRes
 		}
@@ -625,7 +649,8 @@ func (c *apiPoster) RunStatistic() {
 		nowTime := time.Now()
 		totalTime := nowTime.Sub(c.startTime) / time.Second
 		speed := float64(now.resBodyBytes) / float64(totalTime) / 1024 / 1024
-		totalInfo = fmt.Sprintf(template, now.reqTotal, now.reqFail, now.statusCodeErr, now.parseBodyErr, now.succ, now.succ*100/nowRes, now.Time/nowRes, now.resBodyBytes, speed)
+		totalInfo = fmt.Sprintf(template, now.reqTotal, now.reqFail, now.statusCodeErr, now.parseBodyErr, now.succ, float64(now.succ)*100/float64(nowRes), now.Time/nowRes, now.resBodyBytes, speed)
+
 		decInfo = fmt.Sprintf(template, now.reqTotal-oldStatistic.reqTotal, now.reqFail-oldStatistic.reqFail, now.statusCodeErr-oldStatistic.statusCodeErr, now.parseBodyErr-oldStatistic.parseBodyErr, now.succ-oldStatistic.succ, decSuccRate, decAvgTime, decBodyBytes, decSpeed)
 
 		fmt.Printf("[STATISTIC %s +%ds] cur(%s) total(%s)\n", nowTime.Format("2006-01-02 15:04:05"), totalTime, decInfo, totalInfo)
@@ -634,7 +659,6 @@ func (c *apiPoster) RunStatistic() {
 }
 
 func (c *apiPoster) Run() (err error) {
-
 	if c.Statistic {
 		go c.RunStatistic()
 	}
@@ -664,11 +688,13 @@ func (c *apiPoster) Run() (err error) {
 	var errMakeRes error
 	var tmpRes string
 	for i := 0; i < c.WorkerCoroutineNum; i++ {
+		workerIdx := i
 		go func() {
 			defer c.wg.Done()
+			client := c.clientForWorker(workerIdx)
 			if c.isGetMethod {
 				for item := range c.ch {
-					err, resData := c.itemGet(item)
+					err, resData := c.itemGet(item, client)
 					if err != nil {
 						log.Printf("sendGetReqErr,line[%s]err[%s]", item, err.Error())
 						c.errItemCh <- item
@@ -689,7 +715,7 @@ func (c *apiPoster) Run() (err error) {
 				}
 			} else {
 				for item := range c.ch {
-					err, resData := c.itemPost(item)
+					err, resData := c.itemPost(item, client)
 					if err != nil {
 						log.Printf("sendPostReqErr,line[%s]err[%s]", item, err.Error())
 						c.errItemCh <- item
